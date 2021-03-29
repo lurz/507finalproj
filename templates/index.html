@@ -5,11 +5,12 @@
 </head>
 <body>
     <span>a</span>
-    <ul id="navigation">
-    {% for item in navigation %}
-        <li><a href="{{ item.href }}">{{ item.caption }}</a></li>
-    {% endfor %}
-    </ul>
+    <div>
+        {% for item in items %}
+            <a href="{{ item.href }}">{{ item.name }}</a>
+            <img src="{{ images.url }}" alt="{{ item.name }}">
+        {% endfor %}
+    </div>
 
 </body>
 </html>
