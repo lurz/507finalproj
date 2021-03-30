@@ -1,0 +1,38 @@
+#header {
+    background-image: url("../images/disc.jpeg");
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: center;
+    background-size: 100% 100%;
+    color: white;
+    font-family: "Sofia", sans-serif;
+}
+
+h1 {
+    font-family: "Sofia", sans-serif;
+    font-size: 55px;
+    text-shadow: 3px 3px 3px #ababab;
+    color: white;
+}
+
+label {
+    color: white;
+    font-size: 30px;
+}
+
+.scrollable {
+    overflow-y: auto;
+    white-space: pre-line;
+    max-height: 320px;
+    text-indent: 10px;
+}
+
+input {
+    text-indent: 10px;
+}
+
+.card {
+    font-family: "Timmana", sans-serif;
+}
+
+
