@@ -168,3 +168,5 @@ def post_search():
     context['recommendations'] = recommendations
     return flask.render_template("index.html", **context)
 
+if __name__ == '__main__':
+    app.run(threaded=True, port=5000)

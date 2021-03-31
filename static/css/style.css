@@ -38,6 +38,13 @@ i {
     padding: 5px;
 }
 
+.start {
+    font-family: "Sofia", sans-serif;
+    font-size: 55px;
+    vertical-align: middle;
+    color: black;
+}
+
 .artists {
     overflow-y: auto;
     max-height: 420px;
