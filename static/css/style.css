@@ -20,12 +20,37 @@ label {
     font-size: 30px;
 }
 
+i {
+    vertical-align: middle;
+}
+
+#lyrics-tab, #artists-tab, #recom-tab {
+    border-color: transparent;
+}
+
 .scrollable {
     overflow-y: auto;
     white-space: pre-line;
     max-height: 320px;
     text-indent: 10px;
+    border: 1px solid rgba(0,0,0,.125);
+    border-radius: .25rem;
+    padding: 5px;
 }
+
+.artists {
+    overflow-y: auto;
+    max-height: 420px;
+    text-indent: 10px;
+    padding: 5px;
+}
+
+.artist {
+    border: 1px solid rgba(0,0,0,.125);
+    border-radius: .25rem;
+    padding: 5px;
+}
+
 
 input {
     text-indent: 10px;

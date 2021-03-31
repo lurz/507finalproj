@@ -11,6 +11,7 @@ client_id = secrets.CLIENT_ID
 client_secret = secrets.CLIENT_SECRET
 spotify_token_url = 'https://accounts.spotify.com/api/token'
 spotify_search_url = 'https://api.spotify.com/v1/search'
+spotify_artist_url = 'https://api.spotify.com/v1/artists/'
 lyrics_search_url = 'https://api.lyrics.ovh/v1/'
 
 class Track:
@@ -48,6 +49,20 @@ class Track:
 class Artist:
     def __init__(self, data=None):
         super().__init__()
+        self.id  = data['id']
+        self.img_src = data['images'][2]['url']
+        self.name = data['name']
+        self.genres = data['genres']
+        self.popularity = data['popularity']
+
+    def present(self):
+        context = {}
+        context['id'] = self.id
+        context['name'] = self.name 
+        context['popularity'] = self.popularity
+        context['img_src'] = self.img_src
+        context['genres'] = self.genres
+        return context
 
 @app.route('/')
 def show_index():
@@ -58,6 +73,10 @@ def show_index():
 
     return flask.render_template("index.html")
 
+def get_artist(id, headers):
+    response = requests.get(spotify_artist_url + id, headers=headers)
+    data = json.loads(response.text)
+    return Artist(data).present()
 
 @app.route('/search', methods=['GET', 'POST'])
 def post_search():
@@ -76,8 +95,12 @@ def post_search():
         data = json.loads(response.text)
         lyrics = json.loads(requests.get(lyrics_search_url + s_artist + '/' + s_track).text)
 
+        artists = []
+        for artist in data['tracks']['items'][0]['artists']:
+            artists.append(get_artist(artist['id'], headers))
 
         context = Track(data, lyrics).present()
+        context['artists'] = artists
         return flask.render_template("index.html", **context)
     return flask.render_template("index.html", **context)
 
