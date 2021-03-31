@@ -108,7 +108,36 @@
                                 </div>
                             </div>
                             <div class="tab-pane fade" id="recom" role="tabpanel" aria-labelledby="recom-tab">
-                                Recommendations
+                                <div class="artists">
+                                    <div class="container">
+                                        {% for recom in recommendations %}
+                                        <div class="row mb-3 artist">
+                                            <div class="col-2">
+                                                <img src="{{ recom.img_src }}" alt="{{ recom.name }}" width="64" height="64">
+                                            </div>
+                                            <div class="col-9 offset-1">
+                                                <div class="row">
+                                                    <div style="padding:0;">
+                                                        <a href="{{ recom.url }}">
+                                                            {{ recom.name }} {% if recom.explicit %}<i class="material-icons" style="font-size:1rem">&#xe01e;</i>{% endif %}
+                                                        </a>
+                                                    </div> 
+                                                 </div>
+                                                 <div class="row">
+                                                    <div style="padding:0;">
+                                                        {% for artist in recom.artists %}
+                                                        {{ artist }}{{ ", " if not loop.last else "" }}
+                                                        {% endfor %}
+                                                    </div>
+                                                 </div>
+                                                 <div class="row">
+                                                     {{ recom.minute }}:{{ recom.second }}
+                                                 </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     
