@@ -17,7 +17,7 @@ spotify_track_url = 'https://api.spotify.com/v1/tracks/'
 lyrics_search_url = 'https://api.lyrics.ovh/v1/'
 
 class Track:
-    def __init__(self, data=None, lyrics=None):
+    def __init__(self, data=None):
         super().__init__()
         item = data['tracks']['items'][0]
         self.id = item['id']
@@ -32,7 +32,6 @@ class Track:
         self.explicit = bool(item['explicit'])
         self.album = item['album']['name']
         self.img_src = item['album']['images'][2]['url']
-        self.lyrics = lyrics['lyrics']
         self.next = data['tracks']['next']
         self.prev = data['tracks']['previous']
 
@@ -114,19 +113,31 @@ def show_index():
 
 def get_artist(id, headers):
     response = requests.get(spotify_artist_url + id, headers=headers)
+    if not response.ok:
+        return None
     data = json.loads(response.text)
+    if 'error' in data:
+        return None
     return Artist(data)
 
 def get_track_img(id, headers):
     response = requests.get(spotify_track_url + id, headers=headers)
+    if not response.ok:
+        return ""
     data = json.loads(response.text)
+    if ('error' in data) or ('album' not in data) or len(data['album']['images'])  < 3:
+        return ""
     return data['album']['images'][2]['url']
 
 def get_recommendations(artist_id, track_id, genres, headers):
+    result = []
     params = {'seed_artists': artist_id, 'seed_genres': genres, 'seed_tracks': track_id, 'limit': 5}
     response = requests.get(spotify_recom_url, params=params, headers=headers)
+    if not response.ok:
+        return result
     data = json.loads(response.text)
-    result = []
+    if 'error' in data:
+        return result
     for track in data['tracks']:
         current_recom = Recommendation(track, get_track_img(track['id'], headers))
         result.append(current_recom.present())
@@ -138,6 +149,7 @@ def post_search():
     if 'token' not in flask.session:
         return flask.redirect(flask.url_for('show_index'))
 
+    # Get requested artist and track name
     context = {}
     s_artist = None
     s_track = None
@@ -148,21 +160,50 @@ def post_search():
         s_artist = flask.request.args.get('artist')
         s_track = flask.request.args.get('track')
 
+    # Get search result from Spotify
     token = flask.session['token']
     params = {'q': f'track:{s_track} artist:{s_artist}', 'type': 'track', 'limit': 1}
     headers = {'Authorization': token['token_type'] + " " + token['access_token']}
     response = requests.get(spotify_search_url, params=params, headers=headers)
+    # Invalid spotify request
+    if not response.ok:
+        context['error'] = 'Sorry! Invalid request. Please try again later.'
+        print (response.text)
+        return flask.render_template("index.html", **context)
+    
     data = json.loads(response.text)
-    lyrics = json.loads(requests.get(lyrics_search_url + s_artist + '/' + s_track).text)
+    # Error in the search result
+    if ('error' in data) or ('tracks' not in data) or (data['tracks']['total'] == 0):
+        context['error'] = 'Error. Please try another search.'
+        print (response.text)
+        return flask.render_template("index.html", **context)
+    
+    current_track = Track(data)
 
-    current_track = Track(data, lyrics)
+    # Get artists and recommendations
     artists = []
     recommendations = []
     for artist in data['tracks']['items'][0]['artists']:
         current_artist = get_artist(artist['id'], headers)
+        if not current_artist:
+            continue
         artists.append(current_artist.present())
         recommendations += get_recommendations(artist['id'], current_track.id, current_artist.genres, headers)
 
+    # Get lyrics
+    if len(artists) == 0:
+        current_track.lyrics = "No lyrics available"
+    else:
+        try:
+            response = requests.get(lyrics_search_url + artists[0]['name'] + '/' + current_track.name, timeout=1)
+            if not response.ok:
+                current_track.lyrics = "No lyrics available"
+            else:
+                lyrics = json.loads(response.text)
+                current_track.lyrics = lyrics['lyrics']
+        except:
+            current_track.lyrics = "No lyrics available."
+        
     context = current_track.present()
     context['artists'] = artists
     context['recommendations'] = recommendations
