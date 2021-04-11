@@ -88,7 +88,7 @@ def get_recommendations(artist_id, track_id, genres, headers):
         return result
     for track in data['tracks']:
         current_recom = Recommendation(track, get_track_img(track['id'], headers))
-        result.append(current_recom.present())
+        result.append(current_recom)
     return result
 
 
@@ -99,21 +99,30 @@ def search_cache(s_artist, s_track):
     cur.execute(sql, (s_track + '%', s_artist + '%', ))
     data = cur.fetchall()
     if len(data) == 0:
-        return (None, None)
+        return (None, None, None)
     track_id = data[0]['id']
     sql = "SELECT * FROM track WHERE id=?"
     cur.execute(sql, (track_id, ))
     current_track = Track(db=cur.fetchall()[0])
+
     sql = "SELECT A.id, A.artistname, A.popularity, A.imgsrc, A.genres FROM bond B, artist A WHERE B.trackid=? AND B.artistid=A.id"
     cur.execute(sql, (track_id, ))
     raw_artists = cur.fetchall()
     artists = []
     for r in raw_artists:
         artists.append(Artist(db=r))
-    return (current_track, artists)
+
+    sql = "SELECT * FROM recommendation WHERE trackid=?"
+    cur.execute(sql, (track_id, ))
+    raw_recomms = cur.fetchall()
+    recommendations = []
+    for r in raw_recomms:
+        recommendations.append(Recommendation(db=r))
+
+    return (current_track, artists, recommendations)
 
 
-def store_cache(current_track, artists):
+def store_cache(current_track, artists, recommendations):
     db = get_db()
     cur = db.cursor()
     sql = 'INSERT OR IGNORE INTO track (id, trackname, popularity, minute, second, ' \
@@ -124,6 +133,11 @@ def store_cache(current_track, artists):
         cur.execute(sql, artist.db_tuple())
         sql = 'INSERT OR IGNORE INTO bond (trackid, artistid)  VALUES (?, ?)'
         cur.execute(sql, (current_track.id, artist.id, ))
+    for recommend in recommendations:
+        sql = 'INSERT OR IGNORE INTO recommendation (id, trackid, trackname, minute, second, ' \
+              'ifexplicit, imgsrc, artists, urltrack)  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        cur.execute(sql, recommend.db_tuple(current_track.id))
+
     db.commit()
 
 
@@ -146,12 +160,9 @@ def post_search():
         s_track = flask.request.args.get('track')
 
     # First search from cache
-    current_track, artists = search_cache(s_artist, s_track)
+    current_track, artists, recommendations = search_cache(s_artist, s_track)
     if current_track:
         print('-- FROM DATABASE --')
-        recommendations = []
-        for artist in artists:
-            recommendations += get_recommendations(artist.id, current_track.id, artist.genres, headers)
         context = current_track.present()
         context['artists'] = [x.present() for x in artists]
         context['recommendations'] = recommendations
@@ -203,10 +214,10 @@ def post_search():
         
     context = current_track.present()
     context['artists'] = [x.present() for x in artists]
-    context['recommendations'] = recommendations
+    context['recommendations'] = [x.present() for x in recommendations]
 
     # store in DB
-    store_cache(current_track, artists)
+    store_cache(current_track, artists, recommendations)
 
     return flask.render_template("index.html", **context)
 

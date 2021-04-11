@@ -82,22 +82,32 @@ class Artist:
 
 
 class Recommendation:
-    def __init__(self, item=None, img_src=None):
+    def __init__(self, item=None, img_src=None, db=None):
         super().__init__()
-        self.id = item['id']
-        self.name = item['name']
-        self.minute = int((int(item['duration_ms']) / (1000 * 60)) % 60)
-        self.second = int((int(item['duration_ms']) / 1000) % 60)
-        if self.second < 10:
-            self.second = '0' + str(self.second)
+        if not db:
+            self.id = item['id']
+            self.name = item['name']
+            self.minute = int((int(item['duration_ms']) / (1000 * 60)) % 60)
+            self.second = int((int(item['duration_ms']) / 1000) % 60)
+            if self.second < 10:
+                self.second = '0' + str(self.second)
+            else:
+                self.second = str(self.second)
+            self.explicit = bool(item['explicit'])
+            self.artists = []
+            self.img_src = img_src
+            for artist in item['artists']:
+                self.artists.append(artist['name'])
+            self.url = f'/search?artist={self.artists[0]}&track={self.name}'
         else:
-            self.second = str(self.second)
-        self.explicit = bool(item['explicit'])
-        self.artists = []
-        self.img_src = img_src
-        for artist in item['artists']:
-            self.artists.append(artist['name'])
-        self.url = f'/search?artist={self.artists[0]}&track={self.name}'
+            self.id = db['id']
+            self.name = db['trackname']
+            self.minute = db['minute']
+            self.second = db['second']
+            self.explicit = bool(db['ifexplicit'])
+            self.artists = db['artists'].split(',')
+            self.img_src = db['imgsrc']
+            self.url = db['urltrack']
 
     def present(self):
         context = {}
@@ -110,3 +120,8 @@ class Recommendation:
         context['img_src'] = self.img_src
         context['url'] = self.url
         return context
+
+    def db_tuple(self, trackid):
+        return (self.id, trackid, self.name, str(self.minute), self.second, int(
+            self.explicit), self.img_src, (',').join(self.artists), self.url, )
+

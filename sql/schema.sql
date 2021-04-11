@@ -1,6 +1,7 @@
 DROP TABLE IF EXISTS track;
 DROP TABLE IF EXISTS artist;
 DROP TABLE IF EXISTS bond;
+DROP TABLE IF EXISTS recommendation;
 
 CREATE TABLE track (
   id VARCHAR(30) NOT NULL,
@@ -29,5 +30,19 @@ CREATE TABLE bond (
   artistid VARCHAR(30),
   PRIMARY KEY (trackid, artistid),
   FOREIGN KEY (artistid) REFERENCES artist(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (trackid) REFERENCES track(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE recommendation (
+  id VARCHAR(30) NOT NULL,
+  trackid VARCHAR(30) NOT NULL,
+  trackname VARCHAR(50) NOT NULL,
+  minute VARCHAR(3) NOT NULL,
+  second VARCHAR(2) NOT NULL,
+  ifexplicit INTEGER NOT NULL,
+  imgsrc VARCHAR(255) NOT NULL,
+  artists TEXT NOT NULL,
+  urltrack VARCHAR(255) NOT NULL,
+  PRIMARY KEY(id, trackid),
   FOREIGN KEY (trackid) REFERENCES track(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
