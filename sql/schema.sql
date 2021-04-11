@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS track;
 DROP TABLE IF EXISTS artist;
+DROP TABLE IF EXISTS bond;
 
 CREATE TABLE track (
   id VARCHAR(30) NOT NULL,
@@ -12,16 +13,21 @@ CREATE TABLE track (
   imgsrc VARCHAR(255) NOT NULL,
   lyrics TEXT,
   PRIMARY KEY(id)
-
 );
 
 CREATE TABLE artist (
-  username VARCHAR(20) NOT NULL,
-  fullname VARCHAR(40) NOT NULL,
-  email VARCHAR(40) NOT NULL,
-  filename VARCHAR(64) NOT NULL,
-  password VARCHAR(256) NOT NULL,
-  created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  PRIMARY KEY(username)
+  id VARCHAR(30) NOT NULL,
+  artistname VARCHAR(50) NOT NULL,
+  popularity INTEGER NOT NULL,
+  imgsrc VARCHAR(255) NOT NULL,
+  genres TEXT,
+  PRIMARY KEY(id)
+);
 
+CREATE TABLE bond (
+  trackid VARCHAR(30),
+  artistid VARCHAR(30),
+  PRIMARY KEY (trackid, artistid),
+  FOREIGN KEY (artistid) REFERENCES artist(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (trackid) REFERENCES track(id) ON DELETE CASCADE ON UPDATE CASCADE
 );

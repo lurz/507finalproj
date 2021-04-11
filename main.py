@@ -65,7 +65,7 @@ def get_artist(id, headers):
     data = json.loads(response.text)
     if 'error' in data:
         return None
-    return Artist(data)
+    return Artist(data=data)
 
 def get_track_img(id, headers):
     response = requests.get(spotify_track_url + id, headers=headers)
@@ -75,6 +75,7 @@ def get_track_img(id, headers):
     if ('error' in data) or ('album' not in data) or len(data['album']['images'])  < 3:
         return ""
     return data['album']['images'][2]['url']
+
 
 def get_recommendations(artist_id, track_id, genres, headers):
     result = []
@@ -91,10 +92,47 @@ def get_recommendations(artist_id, track_id, genres, headers):
     return result
 
 
+def search_cache(s_artist, s_track):
+    db = get_db()
+    cur = db.cursor()
+    sql = "SELECT T.id FROM track T, artist A, bond B WHERE B.artistid=A.id AND B.trackid=T.id AND T.trackname LIKE ? AND A.artistname LIKE ?"
+    cur.execute(sql, (s_track + '%', s_artist + '%', ))
+    data = cur.fetchall()
+    if len(data) == 0:
+        return (None, None)
+    track_id = data[0]['id']
+    sql = "SELECT * FROM track WHERE id=?"
+    cur.execute(sql, (track_id, ))
+    current_track = Track(db=cur.fetchall()[0])
+    sql = "SELECT A.id, A.artistname, A.popularity, A.imgsrc, A.genres FROM bond B, artist A WHERE B.trackid=? AND B.artistid=A.id"
+    cur.execute(sql, (track_id, ))
+    raw_artists = cur.fetchall()
+    artists = []
+    for r in raw_artists:
+        artists.append(Artist(db=r))
+    return (current_track, artists)
+
+
+def store_cache(current_track, artists):
+    db = get_db()
+    cur = db.cursor()
+    sql = 'INSERT OR IGNORE INTO track (id, trackname, popularity, minute, second, ' \
+              'ifexplicit, albumname, imgsrc, lyrics)  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    cur.execute(sql, current_track.db_tuple())
+    for artist in artists:
+        sql = 'INSERT OR IGNORE INTO artist (id, artistname, popularity, imgsrc, genres)  VALUES (?, ?, ?, ?, ?)'
+        cur.execute(sql, artist.db_tuple())
+        sql = 'INSERT OR IGNORE INTO bond (trackid, artistid)  VALUES (?, ?)'
+        cur.execute(sql, (current_track.id, artist.id, ))
+    db.commit()
+
+
 @app.route('/search', methods=['GET', 'POST'])
 def post_search():
     if 'token' not in flask.session:
         return flask.redirect(flask.url_for('show_index'))
+    token = flask.session['token']
+    headers = {'Authorization': token['token_type'] + " " + token['access_token']}
 
     # Get requested artist and track name
     context = {}
@@ -107,10 +145,22 @@ def post_search():
         s_artist = flask.request.args.get('artist')
         s_track = flask.request.args.get('track')
 
+    # First search from cache
+    current_track, artists = search_cache(s_artist, s_track)
+    if current_track:
+        print('-- FROM DATABASE --')
+        recommendations = []
+        for artist in artists:
+            recommendations += get_recommendations(artist.id, current_track.id, artist.genres, headers)
+        context = current_track.present()
+        context['artists'] = [x.present() for x in artists]
+        context['recommendations'] = recommendations
+        
+        return flask.render_template("index.html", **context)
+
     # Get search result from Spotify
-    token = flask.session['token']
+    print('-- FROM SPOTIFY API --')
     params = {'q': f'track:{s_track} artist:{s_artist}', 'type': 'track', 'limit': 1}
-    headers = {'Authorization': token['token_type'] + " " + token['access_token']}
     response = requests.get(spotify_search_url, params=params, headers=headers)
     # Invalid spotify request
     if not response.ok:
@@ -121,11 +171,11 @@ def post_search():
     data = json.loads(response.text)
     # Error in the search result
     if ('error' in data) or ('tracks' not in data) or (data['tracks']['total'] == 0):
-        context['error'] = 'Error. Please try another search.'
+        context['error'] = 'No result. Please try another search.'
         print (response.text)
         return flask.render_template("index.html", **context)
     
-    current_track = Track(data)
+    current_track = Track(data=data)
 
     # Get artists and recommendations
     artists = []
@@ -134,7 +184,7 @@ def post_search():
         current_artist = get_artist(artist['id'], headers)
         if not current_artist:
             continue
-        artists.append(current_artist.present())
+        artists.append(current_artist)
         recommendations += get_recommendations(artist['id'], current_track.id, current_artist.genres, headers)
 
     # Get lyrics
@@ -142,7 +192,7 @@ def post_search():
         current_track.lyrics = "No lyrics available"
     else:
         try:
-            response = requests.get(lyrics_search_url + artists[0]['name'] + '/' + current_track.name, timeout=1)
+            response = requests.get(lyrics_search_url + artists[0].name + '/' + current_track.name, timeout=1)
             if not response.ok:
                 current_track.lyrics = "No lyrics available"
             else:
@@ -152,17 +202,11 @@ def post_search():
             current_track.lyrics = "No lyrics available."
         
     context = current_track.present()
-    context['artists'] = artists
+    context['artists'] = [x.present() for x in artists]
     context['recommendations'] = recommendations
 
-    # DB
-    db = get_db()
-    cur = db.cursor()
-    sql = 'INSERT INTO track (id, trackname, popularity, minute, second, ' \
-              'ifexplicit, albumname, imgsrc, lyrics)  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    print (current_track.db_tuple())
-    cur.execute(sql, current_track.db_tuple())
-    db.commit()
+    # store in DB
+    store_cache(current_track, artists)
 
     return flask.render_template("index.html", **context)
 
