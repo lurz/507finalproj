@@ -51,7 +51,6 @@ def close_connection(exception):
 
 @app.route('/')
 def show_index():
-    
     client = BackendApplicationClient(client_id=client_id)
     oauth = OAuth2Session(client=client)
     flask.session['token'] = oauth.fetch_token(token_url=spotify_token_url, client_id=client_id,
@@ -155,8 +154,18 @@ def post_search():
     context = current_track.present()
     context['artists'] = artists
     context['recommendations'] = recommendations
+
+    # DB
+    db = get_db()
+    cur = db.cursor()
+    sql = 'INSERT INTO track (id, trackname, popularity, minute, second, ' \
+              'ifexplicit, albumname, imgsrc, lyrics)  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    print (current_track.db_tuple())
+    cur.execute(sql, current_track.db_tuple())
+    db.commit()
+
     return flask.render_template("index.html", **context)
 
 if __name__ == '__main__':
-    
+    init_db()
     app.run(threaded=True, port=5000)

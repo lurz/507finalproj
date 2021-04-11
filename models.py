@@ -33,6 +33,17 @@ class Track:
         context['prev'] = self.prev
         return context
 
+    def db_tuple(self):
+        return (self.id
+        ,self.name 
+        ,self.popularity
+        ,str(self.minute)
+        ,self.second
+        ,int(self.explicit)
+        ,self.album
+        ,self.img_src
+        ,self.lyrics, )
+
 
 class Artist:
     def __init__(self, data=None):
