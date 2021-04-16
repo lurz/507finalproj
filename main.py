@@ -276,7 +276,7 @@ def store_cache(current_track, artists, recommendations):
     cur.execute(sql, current_track.db_tuple())
     for artist in artists:
         sql = 'INSERT OR IGNORE INTO artist (id, artistname, popularity, imgsrc, genres)  ' \
-        'VALUES (?, ?, ?, ?, ?)'
+            'VALUES (?, ?, ?, ?, ?)'
         cur.execute(sql, artist.db_tuple())
         sql = 'INSERT OR IGNORE INTO bond (trackid, artistid)  VALUES (?, ?)'
         cur.execute(sql, (current_track.id, artist.id, ))
